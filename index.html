@@ -6,6 +6,8 @@
 <title>Weekly Diary</title>
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/quiple/galmuri/dist/galmuri.css">
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard/dist/web/static/pretendard.css">
+<script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-database-compat.js"></script>
 <style>
   :root{
     --paper:#FFFFFF;
@@ -206,6 +208,16 @@
     display:inline-flex; align-items:center; justify-content:center; padding:0;
   }
   .save-note{ text-align:center; font-family:'Galmuri11',sans-serif; font-size:9px; color:var(--ink-soft); margin-top:8px; min-height:12px; }
+  .backup-row{
+    display:flex; align-items:center; justify-content:center; gap:10px;
+    margin-top:6px;
+  }
+  .backup-btn{
+    border:none; background:transparent; font-family:'Galmuri11','Pretendard',sans-serif;
+    font-size:10px; color:var(--ink-soft); cursor:pointer; padding:2px 4px;
+    text-decoration:underline; text-underline-offset:2px;
+  }
+  .backup-btn:hover{ color:var(--accent); }
 
   @media (max-width:760px){
     .spread{ grid-template-columns:1fr; }
@@ -259,6 +271,14 @@
     <button class="nav-arrow" id="nextWeek">›</button>
   </div>
   <div class="save-note" id="saveNote"></div>
+  <div class="backup-row">
+    <button class="backup-btn" id="syncBtn">동기화 설정</button>
+    <span class="backup-btn" id="syncStatus" style="text-decoration:none;cursor:default;"></span>
+    <span style="color:var(--line-strong)">·</span>
+    <button class="backup-btn" id="exportBtn">내보내기</button>
+    <button class="backup-btn" id="importBtn">가져오기</button>
+    <input type="file" id="importFile" accept="application/json" style="display:none">
+  </div>
 </div>
 
 <script>
@@ -319,6 +339,37 @@ let weekData = null;
 let saveTimer = null;
 let globalShowCheckbox = false;
 
+// ==== 자동 동기화 설정 (선택 사항) ====
+// 아래 firebaseConfig 값을 본인 Firebase 프로젝트 값으로 채우면,
+// 이 기기뿐 아니라 같은 동기화 코드를 입력한 모든 기기(모바일 포함)에서
+// 자동으로 같은 데이터를 보게 됩니다. 비워두면 이 브라우저에만 저장돼요.
+const firebaseConfig = {
+  apiKey: "AIzaSyAfKOB5fTQ-8F07vIxSPnw0frKX3ce--pk",
+  databaseURL: "https://weekly-7ed46-default-rtdb.firebaseio.com",
+  projectId: "weekly-7ed46"
+};
+let fbDb = null;
+if(firebaseConfig.apiKey && firebaseConfig.databaseURL && typeof firebase !== 'undefined'){
+  try{
+    firebase.initializeApp(firebaseConfig);
+    fbDb = firebase.database();
+  }catch(e){ fbDb = null; }
+}
+let currentWeekRef = null; // active realtime listener ref, so we can detach it on week change
+
+function getSyncCode(){
+  try{ return localStorage.getItem('syncCode') || ''; }catch(e){ return ''; }
+}
+function setSyncCode(code){
+  try{ localStorage.setItem('syncCode', code); }catch(e){}
+}
+function updateSyncStatus(){
+  const el = document.getElementById('syncStatus');
+  if(!fbDb){ el.textContent = '동기화 미설정(로컬 저장만)'; return; }
+  const code = getSyncCode();
+  el.textContent = code ? `동기화 중 · ${code}` : '동기화 코드 없음';
+}
+
 function emptyWeekData(){
   return { focus:'', days: Array.from({length:7},()=>({ memo:'', tasks:[] })) };
 }
@@ -328,6 +379,13 @@ function emptyWeekData(){
 // (local file, GitHub Pages, any normal web host). This is what makes
 // saving actually work once you host this outside Claude.
 async function storageGet(key){
+  if(fbDb && getSyncCode()){
+    try{
+      const snap = await fbDb.ref(`weeklyDiary/${getSyncCode()}/${key}`).once('value');
+      const val = snap.val();
+      if(val){ try{ localStorage.setItem(key, val); }catch(e){} return val; }
+    }catch(e){}
+  }
   if(typeof window.storage !== 'undefined'){
     try{
       const res = await window.storage.get(key, false);
@@ -337,12 +395,16 @@ async function storageGet(key){
   try{ return localStorage.getItem(key); }catch(e){ return null; }
 }
 async function storageSet(key, value){
+  let ok = false;
   if(typeof window.storage !== 'undefined'){
-    try{ await window.storage.set(key, value, false); return true; }
-    catch(e){ return false; }
+    try{ await window.storage.set(key, value, false); ok = true; }catch(e){}
+  } else {
+    try{ localStorage.setItem(key, value); ok = true; }catch(e){}
   }
-  try{ localStorage.setItem(key, value); return true; }
-  catch(e){ return false; }
+  if(fbDb && getSyncCode()){
+    try{ await fbDb.ref(`weeklyDiary/${getSyncCode()}/${key}`).set(value); ok = true; }catch(e){}
+  }
+  return ok;
 }
 
 async function loadWeek(monday){
@@ -681,6 +743,7 @@ function renderLucky(){
 }
 
 async function goToWeek(monday){
+  if(currentWeekRef){ currentWeekRef.off(); currentWeekRef = null; }
   currentMonday = startOfWeek(monday);
   weekData = await loadWeek(currentMonday);
   document.getElementById('focusInput').value = weekData.focus;
@@ -689,6 +752,25 @@ async function goToWeek(monday){
   renderGutter();
   renderDaysGrid();
   renderMonthStamp();
+
+  if(fbDb && getSyncCode()){
+    const key = 'week:'+toKey(currentMonday);
+    currentWeekRef = fbDb.ref(`weeklyDiary/${getSyncCode()}/${key}`);
+    let firstFire = true;
+    currentWeekRef.on('value', (snap)=>{
+      if(firstFire){ firstFire = false; return; } // skip the initial read, we already loaded it above
+      const val = snap.val();
+      if(!val) return;
+      try{
+        const incoming = JSON.parse(val);
+        if(JSON.stringify(incoming) === JSON.stringify(weekData)) return; // no real change
+        weekData = incoming;
+        document.getElementById('focusInput').value = weekData.focus;
+        renderLeftPage();
+        renderDaysGrid();
+      }catch(e){}
+    });
+  }
 }
 
 document.getElementById('prevWeek').addEventListener('click', ()=> goToWeek(addDays(currentMonday,-7)));
@@ -704,7 +786,88 @@ checkAllToggle.addEventListener('click', ()=>{
   checkAllToggle.classList.toggle('on', globalShowCheckbox);
 });
 
+async function collectAllWeekData(){
+  const entries = {};
+  if(fbDb && getSyncCode()){
+    try{
+      const snap = await fbDb.ref(`weeklyDiary/${getSyncCode()}`).once('value');
+      const val = snap.val() || {};
+      Object.keys(val).forEach(k=>{ entries[k] = val[k]; });
+      return entries;
+    }catch(e){}
+  }
+  if(typeof window.storage !== 'undefined'){
+    try{
+      const listRes = await window.storage.list('week:', false);
+      const keys = listRes ? listRes.keys : [];
+      for(const k of keys){
+        const v = await storageGet(k);
+        if(v) entries[k] = v;
+      }
+    }catch(e){}
+  } else {
+    try{
+      for(let i=0;i<localStorage.length;i++){
+        const k = localStorage.key(i);
+        if(k && k.startsWith('week:')) entries[k] = localStorage.getItem(k);
+      }
+    }catch(e){}
+  }
+  return entries;
+}
+
+document.getElementById('exportBtn').addEventListener('click', async ()=>{
+  const entries = await collectAllWeekData();
+  const blob = new Blob([JSON.stringify(entries, null, 2)], {type:'application/json'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = 'weekly-diary-backup.json';
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+});
+
+document.getElementById('importBtn').addEventListener('click', ()=>{
+  document.getElementById('importFile').click();
+});
+
+document.getElementById('importFile').addEventListener('change', async (e)=>{
+  const file = e.target.files[0];
+  if(!file) return;
+  try{
+    const text = await file.text();
+    const entries = JSON.parse(text);
+    const keys = Object.keys(entries).filter(k=>k.startsWith('week:'));
+    for(const k of keys){
+      await storageSet(k, entries[k]);
+    }
+    await goToWeek(currentMonday);
+    alert(`${keys.length}개 주간 데이터를 불러왔어요.`);
+  }catch(err){
+    alert('올바른 백업 파일이 아니에요.');
+  }
+  e.target.value = '';
+});
+
+document.getElementById('syncBtn').addEventListener('click', async ()=>{
+  if(!fbDb){
+    alert('아직 동기화가 설정되어 있지 않아요. 코드에서 firebaseConfig 값을 채워야 사용할 수 있어요.');
+    return;
+  }
+  const current = getSyncCode();
+  const input = prompt('다른 기기와 똑같이 입력할 동기화 코드를 정해주세요.\n(처음 쓰는 기기라면 새로 만들고, 이미 다른 기기에서 만들었다면 그 코드를 그대로 입력하세요)', current || '');
+  if(input === null) return;
+  const code = input.trim();
+  if(!code) return;
+  setSyncCode(code);
+  updateSyncStatus();
+  await goToWeek(currentMonday);
+});
+
 renderLucky();
+updateSyncStatus();
 goToWeek(currentMonday);
 </script>
 </body>
