@@ -817,16 +817,25 @@ async function collectAllWeekData(){
 }
 
 document.getElementById('exportBtn').addEventListener('click', async ()=>{
-  const entries = await collectAllWeekData();
-  const blob = new Blob([JSON.stringify(entries, null, 2)], {type:'application/json'});
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement('a');
-  a.href = url;
-  a.download = 'weekly-diary-backup.json';
-  document.body.appendChild(a);
-  a.click();
-  document.body.removeChild(a);
-  URL.revokeObjectURL(url);
+  try{
+    const entries = await collectAllWeekData();
+    if(Object.keys(entries).length === 0){
+      alert('내보낼 데이터가 아직 없어요.');
+      return;
+    }
+    const blob = new Blob([JSON.stringify(entries, null, 2)], {type:'application/json'});
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'weekly-diary-backup.json';
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  }catch(err){
+    console.error('내보내기 실패:', err);
+    alert('내보내기에 실패했어요: ' + err.message);
+  }
 });
 
 document.getElementById('importBtn').addEventListener('click', ()=>{
@@ -846,10 +855,24 @@ document.getElementById('importFile').addEventListener('change', async (e)=>{
     await goToWeek(currentMonday);
     alert(`${keys.length}개 주간 데이터를 불러왔어요.`);
   }catch(err){
-    alert('올바른 백업 파일이 아니에요.');
+    console.error('가져오기 실패:', err);
+    alert('가져오기에 실패했어요: ' + err.message);
   }
   e.target.value = '';
 });
+
+async function pushAllLocalDataToFirebase(){
+  if(!(fbDb && getSyncCode())) return;
+  try{
+    for(let i=0;i<localStorage.length;i++){
+      const k = localStorage.key(i);
+      if(k && k.startsWith('week:')){
+        const v = localStorage.getItem(k);
+        if(v) await fbDb.ref(`weeklyDiary/${getSyncCode()}/${k}`).set(v);
+      }
+    }
+  }catch(e){ console.error('클라우드 업로드 실패:', e); }
+}
 
 document.getElementById('syncBtn').addEventListener('click', async ()=>{
   if(!fbDb){
@@ -863,7 +886,11 @@ document.getElementById('syncBtn').addEventListener('click', async ()=>{
   if(!code) return;
   setSyncCode(code);
   updateSyncStatus();
+  // 이 브라우저에 이미 있던 일정을 클라우드로 먼저 올려서,
+  // 다른 기기에서 같은 코드를 입력했을 때 바로 보이게 함
+  await pushAllLocalDataToFirebase();
   await goToWeek(currentMonday);
+  alert('동기화 연결 완료! 이 기기의 기존 일정을 클라우드에 올렸어요.\n다른 기기에서도 같은 코드를 입력하면 바로 보일 거예요.');
 });
 
 renderLucky();
