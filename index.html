@@ -218,6 +218,20 @@
     text-decoration:underline; text-underline-offset:2px;
   }
   .backup-btn:hover{ color:var(--accent); }
+  .drawer-toggle{
+    border:1px solid var(--line-strong); background:var(--paper); color:var(--ink-soft);
+    width:16px; height:16px; border-radius:50%; cursor:pointer; font-size:9px; line-height:1;
+    display:flex; align-items:center; justify-content:center; padding:0;
+    transition:transform .15s;
+  }
+  .drawer-toggle:hover{ color:var(--accent); border-color:var(--accent); }
+  .drawer-toggle.open{ transform:rotate(180deg); }
+  .drawer-panel{
+    display:none;
+    align-items:center; justify-content:center; gap:10px;
+    margin-top:4px;
+  }
+  .drawer-panel.open{ display:flex; }
 
   @media (max-width:760px){
     .spread{ grid-template-columns:1fr; }
@@ -274,7 +288,9 @@
   <div class="backup-row">
     <button class="backup-btn" id="syncBtn">동기화 설정</button>
     <span class="backup-btn" id="syncStatus" style="text-decoration:none;cursor:default;"></span>
-    <span style="color:var(--line-strong)">·</span>
+    <button class="drawer-toggle" id="drawerToggle" title="백업/복원">⌄</button>
+  </div>
+  <div class="drawer-panel" id="drawerPanel">
     <button class="backup-btn" id="exportBtn">내보내기</button>
     <button class="backup-btn" id="importBtn">가져오기</button>
     <input type="file" id="importFile" accept="application/json" style="display:none">
@@ -815,6 +831,13 @@ async function collectAllWeekData(){
   }
   return entries;
 }
+
+document.getElementById('drawerToggle').addEventListener('click', ()=>{
+  const panel = document.getElementById('drawerPanel');
+  const btn = document.getElementById('drawerToggle');
+  const isOpen = panel.classList.toggle('open');
+  btn.classList.toggle('open', isOpen);
+});
 
 document.getElementById('exportBtn').addEventListener('click', async ()=>{
   try{
