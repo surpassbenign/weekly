@@ -1,0 +1,711 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Weekly Diary</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/quiple/galmuri/dist/galmuri.css">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard/dist/web/static/pretendard.css">
+<style>
+  :root{
+    --paper:#FFFFFF;
+    --surface:#FAFAFB;
+    --ink:#2E2E30;
+    --ink-soft:#AFAFB6;
+    --line:#EFEFF2;
+    --line-strong:#E2E2E7;
+    --accent:#FF7FA5;
+    --accent-soft:#FFE9F0;
+    --today-tint:#FFF7FA;
+    --mint:#BFF2DD;
+    --yellow:#FFF0AC;
+    --sky:#C4E6FF;
+    --row-h:32px;
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;}
+  body{
+    background:var(--surface);
+    color:var(--ink);
+    font-family:'Pretendard', sans-serif;
+    min-height:100vh;
+    padding:20px 12px 50px;
+  }
+  .dot{ font-family:'Galmuri11','Pretendard',sans-serif; }
+
+  .sheet{
+    max-width:1600px;
+    width:96%;
+    margin:0 auto;
+    background:var(--paper);
+    border:1px solid var(--line-strong);
+    border-radius:18px;
+    padding:22px 22px 18px;
+  }
+
+  .top{
+    display:flex;
+    justify-content:space-between;
+    align-items:flex-start;
+    gap:16px;
+    flex-wrap:wrap;
+    margin-bottom:14px;
+  }
+  .range{ font-size:22px; font-weight:700; margin:0; line-height:1.15; }
+  .range .year{ font-size:12px; color:var(--ink-soft); font-weight:500; margin-left:6px; }
+  .focus-row{ display:flex; align-items:center; gap:8px; margin-top:6px; }
+  .focus-tag{
+    font-size:10px; letter-spacing:0.04em; color:var(--accent);
+    background:var(--accent-soft); padding:2px 8px; border-radius:20px; flex-shrink:0;
+  }
+  .focus-input{
+    border:none; background:transparent; font-size:12px; color:var(--ink);
+    outline:none; padding:2px 0; width:220px; border-bottom:1px dashed var(--line-strong);
+  }
+  .focus-input:focus{ border-bottom-color:var(--accent); }
+
+  .checkbox-toggle-all{
+    display:flex; align-items:center; gap:6px; font-size:11px; color:var(--ink-soft);
+    background:var(--surface); border:1px solid var(--line-strong); border-radius:20px;
+    padding:5px 10px 5px 6px; cursor:pointer; user-select:none; align-self:flex-start;
+  }
+  .switch{ width:26px;height:15px; border-radius:20px; background:var(--line-strong); position:relative; transition:background .15s; flex-shrink:0; }
+  .switch::after{ content:''; position:absolute; top:2px;left:2px; width:11px;height:11px; border-radius:50%; background:#fff; transition:left .15s; }
+  .checkbox-toggle-all.on .switch{ background:var(--accent); }
+  .checkbox-toggle-all.on .switch::after{ left:13px; }
+
+  /* spread: memo left, tracker right — like the paper diary */
+  .spread{
+    display:grid;
+    grid-template-columns:300px 1fr;
+    gap:14px;
+  }
+  .left-page{
+    display:flex;
+    flex-direction:column;
+    gap:6px;
+    height:100%;
+  }
+  .day-card{
+    border:1px solid var(--line);
+    border-radius:12px;
+    padding:8px 10px 7px;
+    background:var(--surface);
+    flex:1 1 0;
+    min-height:0;
+    display:flex;
+    flex-direction:column;
+  }
+  .day-card.is-today{ border-color:var(--accent); background:var(--today-tint); }
+  .day-card-head{ display:flex; align-items:baseline; gap:6px; margin-bottom:3px; }
+  .day-num{ font-family:'Galmuri11',sans-serif; font-size:14px; color:var(--ink); }
+  .day-card.is-today .day-num{ color:var(--accent); }
+  .day-name{ font-family:'Galmuri11',sans-serif; font-size:9px; color:var(--ink-soft); }
+  .memo-box{
+    width:100%; border:none; resize:none; background:transparent;
+    font-family:'Pretendard', sans-serif; font-size:12px; line-height:1.5; color:var(--ink);
+    outline:none; flex:1; min-height:0;
+  }
+  .memo-box::placeholder{ color:#D6D6DC; }
+
+  /* tracker */
+  .tracker-wrap{
+    display:flex;
+    border:1px solid var(--line-strong);
+    border-radius:12px;
+    overflow:hidden;
+  }
+  .hour-gutter{ width:30px; flex-shrink:0; background:var(--surface); border-right:1px solid var(--line-strong); }
+  .gutter-spacer{ height:44px; border-bottom:1px solid var(--line-strong); }
+  .hour-tick{
+    height:var(--row-h); font-family:'Galmuri11',sans-serif; font-size:9px; color:var(--ink-soft);
+    text-align:center; padding-top:2px; box-sizing:border-box;
+  }
+  .hour-tick.midnight{ color:var(--accent); font-weight:700; }
+  .days-grid{ flex:1; display:grid; grid-template-columns:repeat(7,1fr); min-width:0; }
+  .day-col{ border-right:1px solid var(--line); min-width:0; }
+  .day-col:last-child{ border-right:none; }
+  .day-col-head{ height:44px; border-bottom:1px solid var(--line-strong); display:flex; flex-direction:column; align-items:center; justify-content:center; gap:1px; }
+  .day-col-head .dh-num{ font-family:'Galmuri11',sans-serif; font-size:13px; }
+  .day-col-head .dh-name{ font-family:'Galmuri11',sans-serif; font-size:8px; color:var(--ink-soft); }
+  .day-col.is-today .day-col-head .dh-num{ color:var(--accent); }
+  .day-col.is-today .day-body{ background-color:var(--today-tint); }
+  .day-body{
+    position:relative;
+    background-image:linear-gradient(var(--line) 1px, transparent 1px);
+    background-size:100% var(--row-h);
+    cursor:copy;
+  }
+
+  .task-block{
+    position:absolute; left:2px; right:2px; border-radius:8px; background:#fff;
+    border:1.5px solid var(--line-strong); z-index:2; display:flex; flex-direction:column;
+    padding:3px 4px 0; overflow-y:auto; overflow-x:hidden;
+  }
+  .task-block.dragging{ opacity:0.85; z-index:5; box-shadow:0 4px 10px rgba(0,0,0,0.12); }
+  .task-block.hl-mint{ background:var(--mint); border-color:#9fe0c4; }
+  .task-block.hl-yellow{ background:var(--yellow); border-color:#f0dd7c; }
+  .task-block.hl-sky{ background:var(--sky); border-color:#a3d3f5; }
+
+  .tb-row{ display:flex; align-items:flex-start; gap:4px; }
+  .tb-drag{
+    width:9px; height:14px; flex-shrink:0; border:none; background:transparent;
+    cursor:grab; color:var(--ink-soft); font-size:9px; line-height:14px; opacity:0.4; padding:0;
+    margin-top:1px;
+  }
+  .tb-drag:hover{ opacity:0.9; }
+  .tb-check{ width:11px;height:11px; accent-color:var(--accent); flex-shrink:0; cursor:pointer; margin-top:2px; }
+  .tb-text{
+    flex:1; min-width:0; border:none; background:transparent; font-size:11px;
+    font-family:'Pretendard', sans-serif; color:var(--ink); outline:none;
+    resize:none; overflow:hidden; white-space:pre-wrap; word-break:break-word;
+    line-height:1.35; padding:1px 0;
+  }
+  .tb-text.checked{ text-decoration:line-through; color:var(--ink-soft); }
+  .tb-icon-btn{ border:none; background:transparent; font-size:10px; line-height:1; color:var(--ink-soft); cursor:pointer; padding:1px; flex-shrink:0; display:none; margin-top:2px; }
+  .task-block:hover .tb-icon-btn{ display:block; }
+  .tb-icon-btn.chk-on{ color:var(--accent); display:block; }
+  .tb-hl-btn{
+    width:6px;height:6px; border-radius:50%; border:1px solid var(--line-strong);
+    background:#fff; cursor:pointer; padding:0; flex-shrink:0; margin-top:3px;
+  }
+  .tb-hl-btn.hl-mint{ background:var(--mint); border-color:#9fe0c4; }
+  .tb-hl-btn.hl-yellow{ background:var(--yellow); border-color:#f0dd7c; }
+  .tb-hl-btn.hl-sky{ background:var(--sky); border-color:#a3d3f5; }
+  .tb-dur{ font-family:'Galmuri11',sans-serif; font-size:8px; color:var(--ink-soft); margin-left:auto; padding-right:2px; margin-top:2px; }
+  .tb-resize{ position:absolute; left:0;right:0;bottom:0; height:7px; cursor:ns-resize; display:flex; align-items:center; justify-content:center; }
+  .tb-resize::after{ content:''; width:16px;height:2px; border-radius:2px; background:var(--line-strong); }
+  .task-block:hover .tb-resize::after{ background:var(--ink-soft); }
+
+  /* lucky message footer */
+  .lucky-card{
+    display:flex; align-items:center; justify-content:center; gap:8px;
+    margin-top:12px; padding:0;
+    text-align:center; flex-wrap:wrap;
+  }
+  .lucky-tag{ font-family:'Galmuri11',sans-serif; font-size:9px; color:var(--ink-soft); flex-shrink:0; }
+  .lucky-text{ font-family:'Galmuri11','Pretendard',sans-serif; font-size:10px; color:var(--ink-soft); }
+  .lucky-sep{ font-size:9px; color:var(--line-strong); }
+
+  .foot-nav{ display:flex; align-items:center; justify-content:center; gap:14px; margin-top:14px; }
+  .nav-arrow{
+    border:1px solid var(--line-strong); background:var(--paper); color:var(--ink);
+    width:26px;height:26px; border-radius:50%; cursor:pointer; font-size:13px;
+    display:flex;align-items:center;justify-content:center;
+  }
+  .nav-arrow:hover{ background:var(--accent-soft); border-color:var(--accent); }
+  .month-stamp{
+    display:flex; align-items:center; gap:12px; border:1px solid var(--line-strong);
+    border-radius:40px; padding:5px 16px 5px 14px; background:var(--surface);
+  }
+  .month-num{ font-family:'Galmuri11',sans-serif; font-size:16px; color:var(--accent); }
+  .week-pills{ display:flex; gap:8px; }
+  .week-pill{ border:none; background:transparent; font-family:'Galmuri11',sans-serif; font-size:11px; color:var(--ink-soft); cursor:pointer; padding:2px; }
+  .week-pill.current{
+    color:#fff; background:var(--accent); border-radius:50%; width:18px;height:18px;
+    display:inline-flex; align-items:center; justify-content:center; padding:0;
+  }
+  .save-note{ text-align:center; font-family:'Galmuri11',sans-serif; font-size:9px; color:var(--ink-soft); margin-top:8px; min-height:12px; }
+
+  @media (max-width:760px){
+    .spread{ grid-template-columns:1fr; }
+    .left-page{ display:grid; grid-template-columns:repeat(2,1fr); gap:6px; height:auto; }
+    .day-card{ min-height:70px; }
+    .sheet{ border-radius:12px; padding:14px 8px; }
+    .range{ font-size:18px; }
+    .hour-gutter{ width:22px; }
+    .hour-tick{ font-size:8px; }
+    .tb-text{ font-size:10px; }
+  }
+</style>
+</head>
+<body>
+
+<div class="sheet">
+  <div class="top">
+    <div>
+      <p class="range" id="rangeLabel"></p>
+      <div class="focus-row">
+        <span class="focus-tag dot">FOCUS</span>
+        <input type="text" class="focus-input" id="focusInput" placeholder="이번 주 한 줄 목표">
+      </div>
+    </div>
+    <div class="checkbox-toggle-all" id="checkAllToggle">
+      <span class="switch"></span>
+      <span>체크박스 전체 켜기</span>
+    </div>
+  </div>
+
+  <div class="spread">
+    <div class="left-page" id="leftPage"></div>
+    <div class="tracker-wrap">
+      <div class="hour-gutter" id="hourGutter"></div>
+      <div class="days-grid" id="daysGrid"></div>
+    </div>
+  </div>
+
+  <div class="lucky-card">
+    <span class="lucky-tag dot">오늘의 한마디</span>
+    <span class="lucky-sep">|</span>
+    <span class="lucky-text" id="luckyText"></span>
+  </div>
+
+  <div class="foot-nav">
+    <button class="nav-arrow" id="prevWeek">‹</button>
+    <div class="month-stamp">
+      <span class="month-num" id="monthNum"></span>
+      <div class="week-pills" id="weekPills"></div>
+    </div>
+    <button class="nav-arrow" id="nextWeek">›</button>
+  </div>
+  <div class="save-note" id="saveNote"></div>
+</div>
+
+<script>
+const DAY_NAMES = ['월','화','수','목','금','토','일'];
+// 7:00 ~ next-day 3:00, expressed as a continuous hour range (24,25,26,27 = 0,1,2,3am next day)
+const HOURS = Array.from({length:21}, (_,i)=>i+7);
+const ROW_H = 32;
+const HL_CYCLE = ['none','mint','yellow','sky'];
+
+const LUCKY_QUOTES = [
+  "오늘의 나에게 박수 한 번",
+  "작은 할 일 하나만 끝내도 오늘은 성공",
+  "커피 한 잔의 여유를 챙겨보세요",
+  "오늘은 유독 잘 풀리는 날일지도?",
+  "미뤘던 일, 딱 5분만 시작해보기",
+  "오늘의 행운 아이템은 초록색이에요",
+  "가끔은 아무것도 안 해도 괜찮아요",
+  "물 한 잔 마시고 다시 시작",
+  "오늘 만나는 사람에게 웃어주기",
+  "작은 성취를 스스로 칭찬해주세요",
+  "창밖을 잠깐 바라보는 여유",
+  "오늘은 나에게 친절한 하루",
+  "완벽하지 않아도 충분히 잘하고 있어요",
+  "좋아하는 노래 한 곡 듣고 시작하기",
+  "오늘의 럭키 넘버는 7이에요",
+  "무리하지 말고 내 속도대로",
+  "오늘 하루도 수고 많았어요, 미리",
+  "작은 메모 하나가 큰 도움이 될 거예요",
+  "스트레칭 한 번, 몸도 마음도 가볍게",
+  "오늘은 왠지 좋은 소식이 있을 것 같아요",
+  "느긋하게, 그리고 꾸준하게",
+  "지금 이 순간에 집중해보기",
+  "오늘의 색깔은 산뜻한 민트",
+  "잘하고 있어요, 계속 그렇게",
+  "귀찮은 일부터 해치우면 홀가분해요",
+  "오늘 저녁엔 나를 위한 시간을",
+  "웃긴 생각 하나, 하루가 가벼워져요",
+  "오늘은 새로운 걸 하나 시도해보기",
+  "천천히 해도 괜찮아요, 방향이 중요해요",
+  "오늘 하루의 주인공은 바로 나"
+];
+
+function pad(n){ return String(n).padStart(2,'0'); }
+function toKey(date){ return `${date.getFullYear()}-${pad(date.getMonth()+1)}-${pad(date.getDate())}`; }
+function isSameDay(a,b){ return toKey(a)===toKey(b); }
+function startOfWeek(d){
+  const date = new Date(d);
+  const day = (date.getDay()+6)%7;
+  date.setDate(date.getDate()-day);
+  date.setHours(0,0,0,0);
+  return date;
+}
+function addDays(d,n){ const nd=new Date(d); nd.setDate(nd.getDate()+n); return nd; }
+function uid(){ return 't'+Date.now().toString(36)+Math.random().toString(36).slice(2,7); }
+
+let currentMonday = startOfWeek(new Date());
+let weekData = null;
+let saveTimer = null;
+let globalShowCheckbox = false;
+
+function emptyWeekData(){
+  return { focus:'', days: Array.from({length:7},()=>({ memo:'', tasks:[] })) };
+}
+
+// Uses Claude's window.storage when running inside a Claude artifact,
+// and falls back to the browser's own localStorage everywhere else
+// (local file, GitHub Pages, any normal web host). This is what makes
+// saving actually work once you host this outside Claude.
+async function storageGet(key){
+  if(typeof window.storage !== 'undefined'){
+    try{
+      const res = await window.storage.get(key, false);
+      return res ? res.value : null;
+    }catch(e){ return null; }
+  }
+  try{ return localStorage.getItem(key); }catch(e){ return null; }
+}
+async function storageSet(key, value){
+  if(typeof window.storage !== 'undefined'){
+    try{ await window.storage.set(key, value, false); return true; }
+    catch(e){ return false; }
+  }
+  try{ localStorage.setItem(key, value); return true; }
+  catch(e){ return false; }
+}
+
+async function loadWeek(monday){
+  const key = 'week:'+toKey(monday);
+  try{
+    const value = await storageGet(key);
+    if(value){
+      const parsed = JSON.parse(value);
+      if(!parsed.days) return emptyWeekData();
+      parsed.days.forEach(d=>{ if(!d.tasks) d.tasks=[]; if(d.memo===undefined) d.memo=''; });
+      return parsed;
+    }
+    return emptyWeekData();
+  }catch(e){ return emptyWeekData(); }
+}
+
+function scheduleSave(){
+  const note = document.getElementById('saveNote');
+  note.textContent = '저장 중…';
+  clearTimeout(saveTimer);
+  saveTimer = setTimeout(async ()=>{
+    const key = 'week:'+toKey(currentMonday);
+    const ok = await storageSet(key, JSON.stringify(weekData));
+    note.textContent = ok ? '저장됨' : '저장 실패';
+    if(ok) setTimeout(()=>{ if(note.textContent==='저장됨') note.textContent=''; }, 1000);
+  }, 300);
+}
+
+function renderRangeLabel(){
+  const sunday = addDays(currentMonday,6);
+  const sameMonth = currentMonday.getMonth()===sunday.getMonth();
+  const label = sameMonth
+    ? `${currentMonday.getMonth()+1}.${currentMonday.getDate()} – ${sunday.getDate()}`
+    : `${currentMonday.getMonth()+1}.${currentMonday.getDate()} – ${sunday.getMonth()+1}.${sunday.getDate()}`;
+  document.getElementById('rangeLabel').innerHTML = `${label}<span class="year">${currentMonday.getFullYear()}</span>`;
+}
+
+function renderLeftPage(){
+  const wrap = document.getElementById('leftPage');
+  wrap.innerHTML = '';
+  const today = new Date();
+  DAY_NAMES.forEach((name,i)=>{
+    const date = addDays(currentMonday,i);
+    const card = document.createElement('div');
+    card.className = 'day-card' + (isSameDay(date,today)?' is-today':'');
+    card.innerHTML = `
+      <div class="day-card-head">
+        <span class="day-num">${date.getDate()}</span>
+        <span class="day-name">${name}</span>
+      </div>
+      <textarea class="memo-box" placeholder="메모"></textarea>
+    `;
+    wrap.appendChild(card);
+    const ta = card.querySelector('.memo-box');
+    ta.value = weekData.days[i].memo;
+    ta.addEventListener('input', ()=>{ weekData.days[i].memo = ta.value; scheduleSave(); });
+  });
+}
+
+function renderGutter(){
+  const gutter = document.getElementById('hourGutter');
+  gutter.innerHTML = '<div class="gutter-spacer"></div>';
+  HOURS.forEach(h=>{
+    const t = document.createElement('div');
+    const label = h>=24 ? h-24 : h;
+    t.className = 'hour-tick dot' + (h===24?' midnight':'');
+    t.textContent = label;
+    gutter.appendChild(t);
+  });
+}
+
+function maxDurationFor(day, task){
+  const sorted = [...day.tasks].sort((a,b)=>a.start-b.start);
+  const pos = sorted.indexOf(task);
+  const next = sorted[pos+1];
+  const ceiling = next ? next.start : (HOURS[HOURS.length-1]+1);
+  return ceiling - task.start;
+}
+
+function hasOverlap(day, start, excludeTask){
+  return day.tasks.some(t=>{
+    if(t===excludeTask) return false;
+    return start >= t.start && start < t.start + t.duration;
+  });
+}
+
+function renderDaysGrid(){
+  const grid = document.getElementById('daysGrid');
+  grid.innerHTML = '';
+  const today = new Date();
+  const bodyHeight = HOURS.length * ROW_H;
+
+  for(let d=0; d<7; d++){
+    const date = addDays(currentMonday,d);
+    const day = weekData.days[d];
+    const col = document.createElement('div');
+    col.className = 'day-col' + (isSameDay(date,today)?' is-today':'');
+
+    const head = document.createElement('div');
+    head.className = 'day-col-head';
+    head.innerHTML = `<span class="dh-num dot">${date.getDate()}</span><span class="dh-name dot">${DAY_NAMES[d]}</span>`;
+    col.appendChild(head);
+
+    const body = document.createElement('div');
+    body.className = 'day-body';
+    body.style.height = bodyHeight+'px';
+    body.addEventListener('mousedown', (e)=>{
+      if(e.target !== body) return;
+      const rect = body.getBoundingClientRect();
+      const offsetY = e.clientY - rect.top;
+      const hour = HOURS[0] + Math.floor(offsetY/ROW_H);
+      if(hasOverlap(day, hour, null)) return;
+      const task = { id:uid(), start:hour, duration:1, text:'', checked:false, hasCheckbox:globalShowCheckbox, highlight:'none' };
+      day.tasks.push(task);
+      scheduleSave();
+      renderDaysGrid();
+      setTimeout(()=>{
+        const inp = grid.querySelector(`[data-task-id="${task.id}"] .tb-text`);
+        if(inp) inp.focus();
+      },0);
+    });
+
+    day.tasks.forEach(task=> body.appendChild(renderTaskBlock(day, task)));
+
+    col.appendChild(body);
+    grid.appendChild(col);
+  }
+}
+
+function autosizeTextarea(ta){
+  ta.style.height = 'auto';
+  ta.style.height = ta.scrollHeight + 'px';
+}
+
+function resolveCascade(day){
+  const sorted = [...day.tasks].sort((a,b)=> a.start - b.start || a.duration - b.duration);
+  for(let i=1;i<sorted.length;i++){
+    const prev = sorted[i-1];
+    const cur = sorted[i];
+    const prevEnd = prev.start + prev.duration;
+    if(cur.start < prevEnd) cur.start = prevEnd;
+  }
+  const dayEnd = HOURS[HOURS.length-1] + 1;
+  for(let i=sorted.length-1;i>=0;i--){
+    const t = sorted[i];
+    if(t.start + t.duration > dayEnd){
+      if(t.start >= dayEnd) t.start = dayEnd - 1;
+      t.duration = Math.max(1, dayEnd - t.start);
+    } else break;
+  }
+}
+
+function renderTaskBlock(day, task){
+  const block = document.createElement('div');
+  block.className = 'task-block' + (task.highlight!=='none' ? ' hl-'+task.highlight : '');
+  block.dataset.taskId = task.id;
+  block.style.top = ((task.start - HOURS[0]) * ROW_H)+'px';
+  block.style.height = (task.duration * ROW_H - 2)+'px';
+  block.addEventListener('mousedown', e=> e.stopPropagation());
+
+  const row = document.createElement('div');
+  row.className = 'tb-row';
+
+  const dragHandle = document.createElement('button');
+  dragHandle.className = 'tb-drag';
+  dragHandle.title = '드래그해서 순서/시간 이동';
+  dragHandle.textContent = '⠿';
+  dragHandle.addEventListener('pointerdown', (e)=>{
+    e.preventDefault();
+    e.stopPropagation();
+    dragHandle.setPointerCapture(e.pointerId);
+    const bodyEl = block.parentElement;
+    const startY = e.clientY;
+    const startTop = task.start - HOURS[0];
+    block.classList.add('dragging');
+    function onMove(ev){
+      const deltaRows = Math.round((ev.clientY - startY)/ROW_H);
+      let newTop = startTop + deltaRows;
+      newTop = Math.min(Math.max(newTop, 0), HOURS.length - 1);
+      block.style.top = (newTop*ROW_H)+'px';
+      block._pendingStart = HOURS[0] + newTop;
+    }
+    function onUp(){
+      dragHandle.removeEventListener('pointermove', onMove);
+      dragHandle.removeEventListener('pointerup', onUp);
+      block.classList.remove('dragging');
+      if(block._pendingStart !== undefined && block._pendingStart !== task.start){
+        task.start = block._pendingStart;
+        resolveCascade(day);
+        scheduleSave();
+      }
+      renderDaysGrid();
+    }
+    dragHandle.addEventListener('pointermove', onMove);
+    dragHandle.addEventListener('pointerup', onUp);
+  });
+
+  const hlBtn = document.createElement('button');
+  hlBtn.className = 'tb-hl-btn' + (task.highlight!=='none' ? ' hl-'+task.highlight : '');
+  hlBtn.title = '형광펜';
+  hlBtn.addEventListener('click', ()=>{
+    const idx = HL_CYCLE.indexOf(task.highlight);
+    task.highlight = HL_CYCLE[(idx+1)%HL_CYCLE.length];
+    scheduleSave();
+    renderDaysGrid();
+  });
+
+  let checkEl = null;
+  if(task.hasCheckbox){
+    checkEl = document.createElement('input');
+    checkEl.type = 'checkbox';
+    checkEl.className = 'tb-check';
+    checkEl.checked = task.checked;
+    checkEl.addEventListener('change', ()=>{
+      task.checked = checkEl.checked;
+      textInput.classList.toggle('checked', task.checked);
+      scheduleSave();
+    });
+  }
+
+  const textInput = document.createElement('textarea');
+  textInput.rows = 1;
+  textInput.className = 'tb-text' + (task.checked?' checked':'');
+  textInput.value = task.text;
+  textInput.placeholder = '일정 입력';
+  textInput.addEventListener('input', ()=>{
+    task.text = textInput.value;
+    autosizeTextarea(textInput);
+  });
+  textInput.addEventListener('keydown', (e)=>{
+    if(e.key === 'Enter' && !e.shiftKey){
+      e.preventDefault();
+      textInput.blur();
+    }
+  });
+  textInput.addEventListener('blur', ()=> scheduleSave());
+
+  const chkToggle = document.createElement('button');
+  chkToggle.className = 'tb-icon-btn' + (task.hasCheckbox ? ' chk-on' : '');
+  chkToggle.title = '체크박스 표시';
+  chkToggle.textContent = '✓';
+  chkToggle.addEventListener('click', ()=>{
+    task.hasCheckbox = !task.hasCheckbox;
+    scheduleSave();
+    renderDaysGrid();
+  });
+
+  const delBtn = document.createElement('button');
+  delBtn.className = 'tb-icon-btn';
+  delBtn.title = '삭제';
+  delBtn.textContent = '×';
+  delBtn.addEventListener('click', ()=>{
+    day.tasks = day.tasks.filter(t=>t!==task);
+    scheduleSave();
+    renderDaysGrid();
+  });
+
+  row.appendChild(dragHandle);
+  row.appendChild(hlBtn);
+  if(checkEl) row.appendChild(checkEl);
+  row.appendChild(textInput);
+  row.appendChild(chkToggle);
+  row.appendChild(delBtn);
+  block.appendChild(row);
+  setTimeout(()=> autosizeTextarea(textInput), 0);
+
+  if(task.duration > 1){
+    const dur = document.createElement('span');
+    dur.className = 'tb-dur dot';
+    dur.textContent = task.duration+'h';
+    block.appendChild(dur);
+  }
+
+  const resize = document.createElement('div');
+  resize.className = 'tb-resize';
+  resize.addEventListener('pointerdown', (e)=>{
+    e.preventDefault();
+    e.stopPropagation();
+    resize.setPointerCapture(e.pointerId);
+    const startY = e.clientY;
+    const startDuration = task.duration;
+    const maxDur = maxDurationFor(day, task);
+    function onMove(ev){
+      const deltaRows = Math.round((ev.clientY - startY)/ROW_H);
+      const newDuration = Math.min(Math.max(startDuration + deltaRows, 1), maxDur);
+      block.style.height = (newDuration*ROW_H - 2)+'px';
+      block._pendingDuration = newDuration;
+    }
+    function onUp(ev){
+      resize.removeEventListener('pointermove', onMove);
+      resize.removeEventListener('pointerup', onUp);
+      if(block._pendingDuration && block._pendingDuration !== task.duration){
+        task.duration = block._pendingDuration;
+        scheduleSave();
+        renderDaysGrid();
+      }
+    }
+    resize.addEventListener('pointermove', onMove);
+    resize.addEventListener('pointerup', onUp);
+  });
+  block.appendChild(resize);
+
+  return block;
+}
+
+function weeksOfMonth(monday){
+  const y = monday.getFullYear(), m = monday.getMonth();
+  const weeks = [];
+  let cursor = startOfWeek(new Date(y,m,1));
+  for(let i=0;i<6;i++){
+    if(cursor.getMonth()===m && cursor.getFullYear()===y) weeks.push(new Date(cursor));
+    cursor = addDays(cursor,7);
+  }
+  return weeks.slice(0,5);
+}
+
+function renderMonthStamp(){
+  document.getElementById('monthNum').textContent = (currentMonday.getMonth()+1);
+  const pillsWrap = document.getElementById('weekPills');
+  pillsWrap.innerHTML = '';
+  weeksOfMonth(currentMonday).forEach((w,i)=>{
+    const btn = document.createElement('button');
+    const isCurrent = toKey(w)===toKey(currentMonday);
+    btn.className = 'week-pill' + (isCurrent?' current':'');
+    btn.textContent = i+1;
+    btn.addEventListener('click', ()=> goToWeek(w));
+    pillsWrap.appendChild(btn);
+  });
+}
+
+function renderLucky(){
+  const today = new Date();
+  const start = new Date(today.getFullYear(),0,0);
+  const doy = Math.floor((today - start)/86400000);
+  document.getElementById('luckyText').textContent = LUCKY_QUOTES[doy % LUCKY_QUOTES.length];
+}
+
+async function goToWeek(monday){
+  currentMonday = startOfWeek(monday);
+  weekData = await loadWeek(currentMonday);
+  document.getElementById('focusInput').value = weekData.focus;
+  renderRangeLabel();
+  renderLeftPage();
+  renderGutter();
+  renderDaysGrid();
+  renderMonthStamp();
+}
+
+document.getElementById('prevWeek').addEventListener('click', ()=> goToWeek(addDays(currentMonday,-7)));
+document.getElementById('nextWeek').addEventListener('click', ()=> goToWeek(addDays(currentMonday,7)));
+document.getElementById('focusInput').addEventListener('input', (e)=>{
+  weekData.focus = e.target.value;
+  scheduleSave();
+});
+
+const checkAllToggle = document.getElementById('checkAllToggle');
+checkAllToggle.addEventListener('click', ()=>{
+  globalShowCheckbox = !globalShowCheckbox;
+  checkAllToggle.classList.toggle('on', globalShowCheckbox);
+});
+
+renderLucky();
+goToWeek(currentMonday);
+</script>
+</body>
+</html>
