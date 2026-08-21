@@ -24,6 +24,34 @@
     --sky:#C4E6FF;
     --row-h:32px;
   }
+  /* color themes (light mode) */
+  html[data-theme="mint"]{ --accent:#2FAE83; --accent-soft:#DFF6EC; --today-tint:#F2FBF7; }
+  html[data-theme="yellow"]{ --accent:#FFC400; --accent-soft:#FFF3C2; --today-tint:#FFFAE8; }
+  html[data-theme="colorful"]{ --accent:#7C6CF0; --accent-soft:#ECE8FF; --today-tint:#F7F5FF; }
+  html[data-theme="gray"]{ --accent:#6B6B70; --accent-soft:#ECECEE; --today-tint:#F7F7F8; }
+
+  /* dark mode base (paper/ink/etc, same for every theme) */
+  body.dark-mode{
+    --paper:#1E1D22;
+    --surface:#26252B;
+    --ink:#F1F0F4;
+    --ink-soft:#8C8A94;
+    --line:#333238;
+    --line-strong:#403F46;
+    --mint:#1F5C46;
+    --yellow:#5C4E14;
+    --sky:#1E4460;
+    --accent:#FF8FB2;
+    --accent-soft:#3A2530;
+    --today-tint:#2B2226;
+  }
+  /* dark mode + color theme combos: keep each theme's own hue, but with a dark-safe soft/tint */
+  html[data-theme="mint"] body.dark-mode{ --accent:#3FCB9B; --accent-soft:#183A2E; --today-tint:#132E25; }
+  html[data-theme="yellow"] body.dark-mode{ --accent:#FFD84D; --accent-soft:#4A3C10; --today-tint:#38300C; }
+  html[data-theme="colorful"] body.dark-mode{ --accent:#9C8FFF; --accent-soft:#2E2A4A; --today-tint:#242138; }
+  html[data-theme="gray"] body.dark-mode{ --accent:#A6A6AC; --accent-soft:#3A3A3E; --today-tint:#2C2C30; }
+  body{ transition:background .2s, color .2s; }
+  .sheet{ transition:background .2s, border-color .2s; }
   *{box-sizing:border-box;}
   html,body{margin:0;padding:0;}
   body{
@@ -75,6 +103,26 @@
   .switch::after{ content:''; position:absolute; top:2px;left:2px; width:11px;height:11px; border-radius:50%; background:#fff; transition:left .15s; }
   .checkbox-toggle-all.on .switch{ background:var(--accent); }
   .checkbox-toggle-all.on .switch::after{ left:13px; }
+
+  .theme-toggle{
+    position:fixed; right:16px; bottom:16px; z-index:50;
+    display:flex; align-items:center; gap:9px;
+    background:var(--paper); border:1px solid var(--line-strong); border-radius:20px;
+    padding:6px 12px 6px 10px; user-select:none;
+    font-family:'Galmuri11','Pretendard',sans-serif; font-size:10px; color:var(--ink-soft);
+    box-shadow:0 2px 10px rgba(0,0,0,0.08);
+  }
+  .theme-toggle .dark-switch{ display:flex; align-items:center; gap:7px; cursor:pointer; }
+  .theme-toggle.on .switch{ background:var(--accent); }
+  .theme-toggle.on .switch::after{ left:13px; }
+  .theme-divider{ width:1px; height:14px; background:var(--line-strong); }
+  .theme-palette{ display:flex; gap:6px; }
+  .theme-swatch{
+    width:15px; height:15px; border-radius:50%; cursor:pointer; padding:0;
+    background:var(--sw); border:2px solid var(--paper);
+    box-shadow:0 0 0 1px var(--line-strong);
+  }
+  .theme-swatch.active{ box-shadow:0 0 0 2px var(--sw); }
 
   /* spread: memo left, tracker right — like the paper diary */
   .spread{
@@ -140,7 +188,7 @@
   }
 
   .task-block{
-    position:absolute; left:2px; right:2px; border-radius:8px; background:#fff;
+    position:absolute; left:2px; right:2px; border-radius:8px; background:var(--paper);
     border:1.5px solid var(--line-strong); z-index:2; display:flex; flex-direction:column;
     padding:3px 4px 0; overflow-y:auto; overflow-x:hidden;
   }
@@ -148,6 +196,8 @@
   .task-block.hl-mint{ background:var(--mint); border-color:#9fe0c4; }
   .task-block.hl-yellow{ background:var(--yellow); border-color:#f0dd7c; }
   .task-block.hl-sky{ background:var(--sky); border-color:#a3d3f5; }
+  .task-block.hl-mint .tb-text, .task-block.hl-yellow .tb-text, .task-block.hl-sky .tb-text{ color:var(--ink); }
+  .task-block.hl-mint .tb-text.checked, .task-block.hl-yellow .tb-text.checked, .task-block.hl-sky .tb-text.checked{ color:var(--ink-soft); }
 
   .tb-row{ display:flex; align-items:flex-start; gap:4px; }
   .tb-drag{
@@ -169,7 +219,7 @@
   .tb-icon-btn.chk-on{ color:var(--accent); display:block; }
   .tb-hl-btn{
     width:6px;height:6px; border-radius:50%; border:1px solid var(--line-strong);
-    background:#fff; cursor:pointer; padding:0; flex-shrink:0; margin-top:3px;
+    background:var(--paper); cursor:pointer; padding:0; flex-shrink:0; margin-top:3px;
   }
   .tb-hl-btn.hl-mint{ background:var(--mint); border-color:#9fe0c4; }
   .tb-hl-btn.hl-yellow{ background:var(--yellow); border-color:#f0dd7c; }
@@ -294,6 +344,21 @@
     <button class="backup-btn" id="exportBtn">내보내기</button>
     <button class="backup-btn" id="importBtn">가져오기</button>
     <input type="file" id="importFile" accept="application/json" style="display:none">
+  </div>
+</div>
+
+<div class="theme-toggle" id="themeToggle">
+  <div class="dark-switch" id="darkSwitch" title="다크 모드">
+    <span class="dot">다크</span>
+    <span class="switch"></span>
+  </div>
+  <div class="theme-divider"></div>
+  <div class="theme-palette" id="themePalette">
+    <button class="theme-swatch" data-theme="pink" title="핑크" style="--sw:#FF7FA5"></button>
+    <button class="theme-swatch" data-theme="mint" title="민트" style="--sw:#2FAE83"></button>
+    <button class="theme-swatch" data-theme="yellow" title="노랑" style="--sw:#FFC400"></button>
+    <button class="theme-swatch" data-theme="colorful" title="컬러풀" style="--sw:#7C6CF0"></button>
+    <button class="theme-swatch" data-theme="gray" title="그레이" style="--sw:#6B6B70"></button>
   </div>
 </div>
 
@@ -915,6 +980,31 @@ document.getElementById('syncBtn').addEventListener('click', async ()=>{
   await goToWeek(currentMonday);
   alert('동기화 연결 완료! 이 기기의 기존 일정을 클라우드에 올렸어요.\n다른 기기에서도 같은 코드를 입력하면 바로 보일 거예요.');
 });
+
+// ==== 다크 모드 / 컬러 테마 ====
+function applyDarkMode(isDark){
+  document.body.classList.toggle('dark-mode', isDark);
+  document.getElementById('themeToggle').classList.toggle('on', isDark);
+  try{ localStorage.setItem('darkMode', isDark ? '1' : '0'); }catch(e){}
+}
+function applyColorTheme(theme){
+  document.documentElement.setAttribute('data-theme', theme);
+  document.querySelectorAll('.theme-swatch').forEach(sw=>{
+    sw.classList.toggle('active', sw.dataset.theme === theme);
+  });
+  try{ localStorage.setItem('colorTheme', theme); }catch(e){}
+}
+document.getElementById('darkSwitch').addEventListener('click', ()=>{
+  applyDarkMode(!document.body.classList.contains('dark-mode'));
+});
+document.querySelectorAll('.theme-swatch').forEach(sw=>{
+  sw.addEventListener('click', ()=> applyColorTheme(sw.dataset.theme));
+});
+let savedDark = false, savedTheme = 'pink';
+try{ savedDark = localStorage.getItem('darkMode') === '1'; }catch(e){}
+try{ savedTheme = localStorage.getItem('colorTheme') || 'pink'; }catch(e){}
+applyDarkMode(savedDark);
+applyColorTheme(savedTheme);
 
 renderLucky();
 updateSyncStatus();
