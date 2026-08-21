@@ -22,6 +22,9 @@
     --mint:#BFF2DD;
     --yellow:#FFF0AC;
     --sky:#C4E6FF;
+    --pink-hl:#FFD3E2;
+    --tracker-ink:var(--ink);
+    --tracker-ink-soft:var(--ink-soft);
     --row-h:32px;
   }
   /* color themes (light mode) */
@@ -41,6 +44,9 @@
     --mint:#1F5C46;
     --yellow:#5C4E14;
     --sky:#1E4460;
+    --pink-hl:#5C2E3D;
+    --tracker-ink:#CFCDD4;
+    --tracker-ink-soft:#6E6C76;
     --accent:#FF8FB2;
     --accent-soft:#3A2530;
     --today-tint:#2B2226;
@@ -196,8 +202,9 @@
   .task-block.hl-mint{ background:var(--mint); border-color:#9fe0c4; }
   .task-block.hl-yellow{ background:var(--yellow); border-color:#f0dd7c; }
   .task-block.hl-sky{ background:var(--sky); border-color:#a3d3f5; }
-  .task-block.hl-mint .tb-text, .task-block.hl-yellow .tb-text, .task-block.hl-sky .tb-text{ color:var(--ink); }
-  .task-block.hl-mint .tb-text.checked, .task-block.hl-yellow .tb-text.checked, .task-block.hl-sky .tb-text.checked{ color:var(--ink-soft); }
+  .task-block.hl-pink{ background:var(--pink-hl); border-color:#f5a8c2; }
+  .task-block.hl-mint .tb-text, .task-block.hl-yellow .tb-text, .task-block.hl-sky .tb-text, .task-block.hl-pink .tb-text{ color:var(--tracker-ink); }
+  .task-block.hl-mint .tb-text.checked, .task-block.hl-yellow .tb-text.checked, .task-block.hl-sky .tb-text.checked, .task-block.hl-pink .tb-text.checked{ color:var(--tracker-ink-soft); }
 
   .tb-row{ display:flex; align-items:flex-start; gap:4px; }
   .tb-drag{
@@ -209,11 +216,11 @@
   .tb-check{ width:11px;height:11px; accent-color:var(--accent); flex-shrink:0; cursor:pointer; margin-top:2px; }
   .tb-text{
     flex:1; min-width:0; border:none; background:transparent; font-size:11px;
-    font-family:'Pretendard', sans-serif; color:var(--ink); outline:none;
+    font-family:'Pretendard', sans-serif; color:var(--tracker-ink); outline:none;
     resize:none; overflow:hidden; white-space:pre-wrap; word-break:break-word;
     line-height:1.35; padding:1px 0;
   }
-  .tb-text.checked{ text-decoration:line-through; color:var(--ink-soft); }
+  .tb-text.checked{ text-decoration:line-through; color:var(--tracker-ink-soft); }
   .tb-icon-btn{ border:none; background:transparent; font-size:10px; line-height:1; color:var(--ink-soft); cursor:pointer; padding:1px; flex-shrink:0; display:none; margin-top:2px; }
   .task-block:hover .tb-icon-btn{ display:block; }
   .tb-icon-btn.chk-on{ color:var(--accent); display:block; }
@@ -224,6 +231,7 @@
   .tb-hl-btn.hl-mint{ background:var(--mint); border-color:#9fe0c4; }
   .tb-hl-btn.hl-yellow{ background:var(--yellow); border-color:#f0dd7c; }
   .tb-hl-btn.hl-sky{ background:var(--sky); border-color:#a3d3f5; }
+  .tb-hl-btn.hl-pink{ background:var(--pink-hl); border-color:#f5a8c2; }
   .tb-dur{ font-family:'Galmuri11',sans-serif; font-size:8px; color:var(--ink-soft); margin-left:auto; padding-right:2px; margin-top:2px; }
   .tb-resize{ position:absolute; left:0;right:0;bottom:0; height:7px; cursor:ns-resize; display:flex; align-items:center; justify-content:center; }
   .tb-resize::after{ content:''; width:16px;height:2px; border-radius:2px; background:var(--line-strong); }
@@ -367,7 +375,7 @@ const DAY_NAMES = ['월','화','수','목','금','토','일'];
 // 7:00 ~ next-day 3:00, expressed as a continuous hour range (24,25,26,27 = 0,1,2,3am next day)
 const HOURS = Array.from({length:21}, (_,i)=>i+7);
 const ROW_H = 32;
-const HL_CYCLE = ['none','mint','yellow','sky'];
+const HL_CYCLE = ['none','mint','yellow','sky','pink'];
 
 const LUCKY_QUOTES = [
   "오늘의 나에게 박수 한 번",
