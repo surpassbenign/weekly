@@ -246,6 +246,43 @@
   .lucky-tag{ font-family:'Galmuri11',sans-serif; font-size:9px; color:var(--ink-soft); flex-shrink:0; }
   .lucky-text{ font-family:'Galmuri11','Pretendard',sans-serif; font-size:9px; color:var(--ink-soft); }
   .lucky-sep{ font-size:9px; color:var(--line-strong); }
+  .lucky-manage-btn{
+    border:1px solid var(--line-strong); background:transparent; color:var(--ink-soft);
+    width:14px; height:14px; border-radius:50%; font-size:10px; line-height:1;
+    display:flex; align-items:center; justify-content:center; padding:0;
+    cursor:pointer; flex-shrink:0;
+  }
+  .lucky-manage-btn:hover{ color:var(--accent); border-color:var(--accent); }
+
+  .quote-manager-overlay{
+    position:fixed; inset:0; background:rgba(0,0,0,0.35);
+    display:none; align-items:center; justify-content:center; z-index:100; padding:20px;
+  }
+  .quote-manager-overlay.open{ display:flex; }
+  .quote-manager-panel{
+    background:var(--paper); border-radius:16px; width:100%; max-width:420px; max-height:80vh;
+    overflow:hidden; display:flex; flex-direction:column; box-shadow:0 10px 40px rgba(0,0,0,0.25);
+  }
+  .qm-header{ display:flex; justify-content:space-between; align-items:center; padding:14px 16px; border-bottom:1px solid var(--line); }
+  .qm-title{ font-size:12px; color:var(--ink); }
+  .qm-close{ border:none; background:transparent; font-size:16px; color:var(--ink-soft); cursor:pointer; line-height:1; }
+  .qm-close:hover{ color:var(--accent); }
+  .qm-add-row{ display:flex; gap:8px; padding:12px 16px; border-bottom:1px solid var(--line); }
+  .qm-input{
+    flex:1; border:1px solid var(--line-strong); border-radius:8px; padding:6px 10px;
+    font-size:12px; background:var(--surface); color:var(--ink); outline:none;
+    font-family:'Pretendard', sans-serif;
+  }
+  .qm-input:focus{ border-color:var(--accent); }
+  .qm-add-btn{ border:none; background:var(--accent); color:#fff; border-radius:8px; padding:0 14px; font-size:12px; cursor:pointer; }
+  .qm-list{ overflow-y:auto; padding:4px 16px 8px; flex:1; min-height:60px; }
+  .qm-item{ display:flex; align-items:center; gap:8px; padding:7px 0; border-bottom:1px solid var(--line); font-size:12px; color:var(--ink); }
+  .qm-item:last-child{ border-bottom:none; }
+  .qm-item-text{ flex:1; word-break:break-word; }
+  .qm-item-del{ border:none; background:transparent; color:var(--ink-soft); cursor:pointer; font-size:13px; flex-shrink:0; }
+  .qm-item-del:hover{ color:var(--accent); }
+  .qm-empty{ font-size:11px; color:var(--ink-soft); padding:16px 0; text-align:center; }
+  .qm-hint{ font-size:9px; color:var(--ink-soft); padding:0 16px 14px; text-align:center; }
 
   .foot-nav{ display:flex; align-items:center; justify-content:center; gap:14px; margin-top:14px; }
   .nav-arrow{
@@ -332,6 +369,7 @@
     <span class="lucky-tag dot">오늘의 한마디</span>
     <span class="lucky-sep">|</span>
     <span class="lucky-text" id="luckyText"></span>
+    <button class="lucky-manage-btn" id="luckyManageBtn" title="오늘의 한마디 관리">+</button>
   </div>
 
   <div class="foot-nav">
@@ -352,6 +390,21 @@
     <button class="backup-btn" id="exportBtn">내보내기</button>
     <button class="backup-btn" id="importBtn">가져오기</button>
     <input type="file" id="importFile" accept="application/json" style="display:none">
+  </div>
+</div>
+
+<div class="quote-manager-overlay" id="quoteManagerOverlay">
+  <div class="quote-manager-panel">
+    <div class="qm-header">
+      <span class="qm-title dot">오늘의 한마디 관리</span>
+      <button class="qm-close" id="qmClose">×</button>
+    </div>
+    <div class="qm-add-row">
+      <input type="text" id="qmInput" class="qm-input" placeholder="새 문구 입력">
+      <button class="qm-add-btn" id="qmAddBtn">추가</button>
+    </div>
+    <div class="qm-list" id="qmList"></div>
+    <p class="qm-hint dot">문구를 하나도 등록하지 않으면 기본 문구가 표시돼요.</p>
   </div>
 </div>
 
@@ -824,12 +877,80 @@ function renderMonthStamp(){
   });
 }
 
+let customQuotes = [];
+
+async function loadCustomQuotes(){
+  try{
+    const v = await storageGet('customQuotes');
+    customQuotes = v ? JSON.parse(v) : [];
+  }catch(e){ customQuotes = []; }
+}
+async function saveCustomQuotes(){
+  await storageSet('customQuotes', JSON.stringify(customQuotes));
+}
+
 function renderLucky(){
   const today = new Date();
   const start = new Date(today.getFullYear(),0,0);
   const doy = Math.floor((today - start)/86400000);
-  document.getElementById('luckyText').textContent = LUCKY_QUOTES[doy % LUCKY_QUOTES.length];
+  const list = customQuotes.length ? customQuotes : LUCKY_QUOTES;
+  document.getElementById('luckyText').textContent = list[doy % list.length];
 }
+
+function renderQuoteList(){
+  const wrap = document.getElementById('qmList');
+  wrap.innerHTML = '';
+  if(customQuotes.length === 0){
+    wrap.innerHTML = '<div class="qm-empty">아직 등록한 문구가 없어요</div>';
+    return;
+  }
+  customQuotes.forEach((q, idx)=>{
+    const row = document.createElement('div');
+    row.className = 'qm-item';
+    const span = document.createElement('span');
+    span.className = 'qm-item-text';
+    span.textContent = q;
+    const delBtn = document.createElement('button');
+    delBtn.className = 'qm-item-del';
+    delBtn.title = '삭제';
+    delBtn.textContent = '×';
+    delBtn.addEventListener('click', async ()=>{
+      customQuotes.splice(idx,1);
+      await saveCustomQuotes();
+      renderQuoteList();
+      renderLucky();
+    });
+    row.appendChild(span);
+    row.appendChild(delBtn);
+    wrap.appendChild(row);
+  });
+}
+
+document.getElementById('luckyManageBtn').addEventListener('click', ()=>{
+  document.getElementById('quoteManagerOverlay').classList.add('open');
+  renderQuoteList();
+});
+document.getElementById('qmClose').addEventListener('click', ()=>{
+  document.getElementById('quoteManagerOverlay').classList.remove('open');
+});
+document.getElementById('quoteManagerOverlay').addEventListener('click', (e)=>{
+  if(e.target.id === 'quoteManagerOverlay'){
+    document.getElementById('quoteManagerOverlay').classList.remove('open');
+  }
+});
+document.getElementById('qmAddBtn').addEventListener('click', async ()=>{
+  const input = document.getElementById('qmInput');
+  const val = input.value.trim();
+  if(!val) return;
+  customQuotes.push(val);
+  input.value = '';
+  await saveCustomQuotes();
+  renderQuoteList();
+  renderLucky();
+});
+document.getElementById('qmInput').addEventListener('keydown', (e)=>{
+  if(e.key === 'Enter') document.getElementById('qmAddBtn').click();
+});
 
 async function goToWeek(monday){
   if(currentWeekRef){ currentWeekRef.off(); currentWeekRef = null; }
@@ -1014,7 +1135,7 @@ try{ savedTheme = localStorage.getItem('colorTheme') || 'pink'; }catch(e){}
 applyDarkMode(savedDark);
 applyColorTheme(savedTheme);
 
-renderLucky();
+loadCustomQuotes().then(renderLucky);
 updateSyncStatus();
 goToWeek(currentMonday);
 </script>
