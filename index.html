@@ -25,6 +25,7 @@
     --pink-hl:#FFD3E2;
     --tracker-ink:var(--ink);
     --tracker-ink-soft:var(--ink-soft);
+    --memo-ink:#7A7A82;
     --row-h:32px;
   }
   /* color themes (light mode) */
@@ -47,6 +48,7 @@
     --pink-hl:#5C2E3D;
     --tracker-ink:#CFCDD4;
     --tracker-ink-soft:#6E6C76;
+    --memo-ink:#9C9AA2;
     --accent:#FF8FB2;
     --accent-soft:#3A2530;
     --today-tint:#2B2226;
@@ -159,8 +161,9 @@
   .day-name{ font-family:'Galmuri11',sans-serif; font-size:9px; color:var(--ink-soft); }
   .memo-box{
     width:100%; border:none; resize:none; background:transparent;
-    font-family:'Pretendard', sans-serif; font-size:12px; line-height:1.5; color:var(--ink);
-    outline:none; flex:1; min-height:0;
+    font-family:'Galmuri7', 'Pretendard', sans-serif; font-size:11px; line-height:1.65;
+    letter-spacing:0.05em; color:var(--memo-ink);
+    outline:none; flex:1; min-height:0; overflow-y:hidden;
   }
   .memo-box::placeholder{ color:#D6D6DC; }
 
@@ -196,7 +199,7 @@
   .task-block{
     position:absolute; left:2px; right:2px; border-radius:8px; background:var(--paper);
     border:1.5px solid var(--line-strong); z-index:2; display:flex; flex-direction:column;
-    padding:3px 4px 0; overflow-y:auto; overflow-x:hidden;
+    padding:3px 4px 0; overflow-y:hidden; overflow-x:hidden;
   }
   .task-block.dragging{ opacity:0.85; z-index:5; box-shadow:0 4px 10px rgba(0,0,0,0.12); }
   .task-block.hl-mint{ background:var(--mint); border-color:#9fe0c4; }
