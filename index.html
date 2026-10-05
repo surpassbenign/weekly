@@ -161,8 +161,8 @@
   .day-name{ font-family:'Galmuri11',sans-serif; font-size:9px; color:var(--ink-soft); }
   .memo-box{
     width:100%; border:none; resize:none; background:transparent;
-    font-family:'Galmuri7', 'Pretendard', sans-serif; font-size:10.5px; line-height:1.65;
-    letter-spacing:0.042em; color:var(--memo-ink);
+    font-family:'Galmuri7', 'Pretendard', sans-serif; font-size:11px; line-height:1.65;
+    letter-spacing:0.05em; color:var(--memo-ink);
     outline:none; flex:1; min-height:0; overflow-y:hidden;
   }
   .memo-box::placeholder{ color:#D6D6DC; }
@@ -570,12 +570,26 @@ function scheduleSave(){
   const note = document.getElementById('saveNote');
   note.textContent = '저장 중…';
   clearTimeout(saveTimer);
+  // snapshot the key + data NOW, not when the timer fires — otherwise switching
+  // weeks inside the 300ms window redirects/loses this save (the bug that ate last week's data)
+  const key = 'week:'+toKey(currentMonday);
+  const snapshot = JSON.stringify(weekData);
   saveTimer = setTimeout(async ()=>{
-    const key = 'week:'+toKey(currentMonday);
-    const ok = await storageSet(key, JSON.stringify(weekData));
+    const ok = await storageSet(key, snapshot);
     note.textContent = ok ? '저장됨' : '저장 실패';
     if(ok) setTimeout(()=>{ if(note.textContent==='저장됨') note.textContent=''; }, 1000);
   }, 300);
+}
+
+async function flushPendingSave(){
+  if(saveTimer){
+    clearTimeout(saveTimer);
+    saveTimer = null;
+    // force an immediate save of whatever is currently in memory, using the
+    // week we're still on at this exact moment (called right before navigating away)
+    const key = 'week:'+toKey(currentMonday);
+    await storageSet(key, JSON.stringify(weekData));
+  }
 }
 
 function renderRangeLabel(){
@@ -956,6 +970,7 @@ document.getElementById('qmInput').addEventListener('keydown', (e)=>{
 });
 
 async function goToWeek(monday){
+  await flushPendingSave();
   if(currentWeekRef){ currentWeekRef.off(); currentWeekRef = null; }
   currentMonday = startOfWeek(monday);
   weekData = await loadWeek(currentMonday);
